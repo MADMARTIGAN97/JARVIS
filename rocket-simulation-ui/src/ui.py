@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
+import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from simulation import run_simulation
@@ -8,14 +9,14 @@ from simulation import run_simulation
 # === FULL RETRO PIXEL STYLE ===
 retro_style = """
 QWidget {
-    background-color: #e0d7c6;
     font-family: 'Press Start 2P', monospace;
     font-size: 12px;
     color: #2c2c2c;
+    background-color: transparent;
 }
 
 QLineEdit {
-    background-color: #f4efe6;
+    background-color: rgba(244, 239, 230, 0.9);
     border: 2px solid #a89f91;
     border-radius: 4px;
     padding: 4px;
@@ -50,10 +51,21 @@ QSplitter::handle {
 class RocketSimulationUI(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
+        self._background_image = None
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle('Rocket Simulation')
+        
+        # Load background image
+        image_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'rip-terry-davis.png'))
+        self._background_image = QtGui.QImage(image_path)
+        if self._background_image.isNull():
+            print(f"Error: Could not load background image from {image_path}")
+        
+        # Enable custom painting and background
+        self.setAttribute(QtCore.Qt.WA_StyledBackground)
+        self.setAutoFillBackground(False)
 
         main_layout = QtWidgets.QHBoxLayout(self)
 

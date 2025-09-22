@@ -18,7 +18,7 @@ import matplotlib.patches as mpatches
 retro_style = """
 from scipy.ndimage import rotate
 QProgressBar {
-    background-color: #FDF6E3;
+    background-color: rgba(253, 246, 227, 0.85);
     border: 2px solid #BCA16A;
     border-radius: 8px;
     height: 18px;
@@ -30,29 +30,61 @@ QProgressBar::chunk {
 }
 
 QToolBar {
-    background-color: #F8F5E3;
+    background-color: rgba(248, 245, 227, 0.85);
     border: 2px solid #BCA16A;
     color: #3C2F1E;
     font-family: 'Press Start 2P', monospace;
     font-size: 12px;
 }
+
+QMainWindow, QMainWindow::central-widget {
+    background-color: transparent;
+}
+
 QWidget {
-    background-color: #F8F5E3; /* 8BitDo beige */
+    background-color: transparent;
     font-family: 'Press Start 2P', monospace;
     font-size: 12px;
     color: #3C2F1E; /* dark brown */
 }
 
+QTabWidget, QTabWidget::pane {
+    background-color: transparent;
+    border: none;
+}
+
+QTabWidget::tab-bar {
+    background-color: transparent;
+}
+
+QTabBar::tab {
+    background-color: rgba(248, 245, 227, 0.85);
+    border: 2px solid #BCA16A;
+    border-radius: 4px;
+    padding: 4px;
+    margin: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: rgba(233, 79, 55, 0.85);
+    color: #F8F5E3;
+}
+
+QScrollArea, QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+    border: none;
+}
+
 QLineEdit {
-    background-color: #FDF6E3; /* lighter beige */
-    border: 2px solid #BCA16A; /* brown accent */
+    background-color: rgba(253, 246, 227, 0.85);
+    border: 2px solid #BCA16A;
     border-radius: 4px;
     padding: 4px;
     color: #3C2F1E;
 }
 
 QPushButton {
-    background-color: #E94F37; /* 8BitDo red */
+    background-color: rgba(233, 79, 55, 0.9); /* 8BitDo red with transparency */
     border: 2px solid #3C2F1E;
     border-radius: 6px;
     padding: 6px;
@@ -61,9 +93,32 @@ QPushButton {
 }
 
 QPushButton:hover {
-    background-color: #FFD447; /* 8BitDo yellow */
+    background-color: rgba(255, 212, 71, 0.9); /* 8BitDo yellow with transparency */
     border: 2px solid #E94F37;
     color: #3C2F1E;
+}
+
+QLabel {
+    font-weight: bold;
+    color: #3a2f1e;
+    background-color: transparent;
+}
+
+QFormLayout {
+    background-color: transparent;
+}
+
+/* Add a semi-transparent panel behind form elements for readability */
+QGroupBox {
+    background-color: rgba(248, 245, 227, 0.65);
+    border: 2px solid rgba(188, 161, 106, 0.8);
+    border-radius: 8px;
+    margin-top: 8px;
+    padding: 8px;
+}
+
+QSplitter::handle {
+    background-color: rgba(168, 159, 145, 0.5);
 }
 
 QLabel {
@@ -96,27 +151,73 @@ class CrashImageDialog(QtWidgets.QDialog):
         layout.addWidget(error_box)
         self.setLayout(layout)
 
-class RocketSimulationUI(QtWidgets.QWidget):
+class BackgroundWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._background_image = None
+        self.load_background()
+
+    def load_background(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'rip-terry-davis.png')
+        print(f"Attempting to load background image from: {image_path}")
+        print(f"File exists: {os.path.exists(image_path)}")
+        self._background_image = QtGui.QPixmap(image_path)
+        if self._background_image.isNull():
+            print(f"Failed to load background image from: {image_path}")
+        else:
+            print(f"Successfully loaded background image: {self._background_image.width()}x{self._background_image.height()}")
+
+    def paintEvent(self, event):
+        if not self._background_image.isNull():
+            painter = QtGui.QPainter(self)
+            scaled_image = self._background_image.scaled(self.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+            # Center the image
+            x = (self.width() - scaled_image.width()) // 2
+            y = (self.height() - scaled_image.height()) // 2
+            painter.drawPixmap(x, y, scaled_image)
+
+class RocketSimulationUI(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self._rocket_img_cache = {}
-        # Set window and taskbar icon (use .ico for best Windows compatibility)
+        # Set window and taskbar icon
         self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__), 'JARVIS.ico')))
+        
+        # Create central widget with background
+        self.central_widget = BackgroundWidget(self)
+        self.setCentralWidget(self.central_widget)
+        
+        # Set minimum size
+        self.setMinimumSize(800, 600)
         self.init_ui()
-        self.load_inputs()  # Load inputs on startup
-        self.showMaximized()
+        self.load_inputs()
+        self.resize(1024, 768)
 
 
     def init_ui(self):
         self.setWindowTitle('JARVIS')
-        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout = QtWidgets.QHBoxLayout(self.central_widget)
+        
+        # Make the tabs transparent
         self.tabs = QtWidgets.QTabWidget()
+        self.tabs.setAutoFillBackground(False)
+        
+        # Create and configure main panel
         main_panel = QtWidgets.QWidget()
+        main_panel.setAutoFillBackground(False)
         main_panel_layout = QtWidgets.QHBoxLayout(main_panel)
+        
+        # Set all parent widgets to be transparent
+        for widget in [self.central_widget, main_panel, self.tabs]:
+            widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+            widget.setAttribute(QtCore.Qt.WA_NoSystemBackground)
 
         # Left panel: Inputs
         left_widget = QtWidgets.QWidget()
         left_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        left_widget.setAutoFillBackground(False)
+        left_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        left_widget.setAttribute(QtCore.Qt.WA_NoSystemBackground)
         left_layout = QtWidgets.QVBoxLayout(left_widget)
 
         form_layout = QtWidgets.QFormLayout()
@@ -1906,8 +2007,7 @@ class RocketSimulationUI(QtWidgets.QWidget):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     app.setStyleSheet(retro_style)
-
-
+    
     # Splash screen with reliability checks
     gif_path = os.path.join(os.path.dirname(__file__), 'jarvis.gif')
     splash_movie = QtGui.QMovie(gif_path)
